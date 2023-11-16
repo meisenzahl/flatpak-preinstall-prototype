@@ -17,15 +17,15 @@ jobs:
     - uses: actions/checkout@v4
     - name: Install Dependencies
       run: |
-        apt update
-        apt install -y libflatpak-dev systemd meson valac
+        sudo apt update
+        sudo apt install -y libflatpak-dev systemd meson valac
     - name: Build
       env:
         DESTDIR: out
       run: |
         meson build
         ninja -C build
-        ninja -C build install
+        sudo ninja -C build install
 
   lint:
 
