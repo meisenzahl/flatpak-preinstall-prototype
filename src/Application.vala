@@ -83,7 +83,12 @@ public class Application : GLib.Application {
             }
 
             try {
-                foreach (var remote_ref in installation.list_remote_refs_sync_full (remote.get_name (), Flatpak.QueryFlags.ONLY_CACHED, null)) {
+                var remote_refs = installation.list_remote_refs_sync_full (
+                    remote.get_name (),
+                    Flatpak.QueryFlags.ONLY_CACHED,
+                    null
+                );
+                foreach (var remote_ref in remote_refs) {
                     remote_ref_strings.add (remote_ref.format_ref ());
                 }
             } catch (Error e) {
@@ -95,7 +100,7 @@ public class Application : GLib.Application {
             print ("Looking for matches…\n");
             Dir dir;
             try {
-                dir = Dir.open(flatpak_preinstall_config_dir);
+                dir = Dir.open (flatpak_preinstall_config_dir);
 
                 var to_be_installed_list = new GLib.GenericArray<FlatpakInstall?> ();
 
@@ -177,7 +182,9 @@ public class Application : GLib.Application {
 
                 bool should_install = assumeyes;
                 if (!assumeyes) {
-                    print ("Proceed with these changes to the %s installation? [Y/n]: ".printf (user ? "user" : "system"));
+                    print ("Proceed with these changes to the %s installation? [Y/n]: "
+                           .printf (user ? "user" : "system")
+                    );
                     string answer = string.nfill (1, (char) stdin.getc ()).down ();
                     should_install = answer == "y" || answer == "\n";
                     print ("\n");
