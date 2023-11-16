@@ -33,21 +33,48 @@ public class Application : GLib.Application {
             return;
         }
 
-        Flatpak.Installation installation = new Flatpak.Installation.system ();
+        Flatpak.Installation installation;
+        try {
+            installation = new Flatpak.Installation.system ();
+        } catch (Error e) {
+            critical ("Unable to open system-wide Flatpak installation: %s", e.message);
+            return;
+        }
+
         string flatpak_preinstall_config_dir = "/etc/flatpak/preinstall.d";
 
         if (user) {
-            installation = new Flatpak.Installation.user ();
+            try {
+                installation = new Flatpak.Installation.user ();
+            } catch (Error e) {
+                critical ("Unable to open user Flatpak installation: %s", e.message);
+                return;
+            }
             flatpak_preinstall_config_dir = "%s/.config/flatpak/preinstall.d".printf (Environment.get_home_dir ());
         }
 
-        update_remotes (installation);
+        try {
+            update_remotes (installation);
+        } catch (Error e) {
+            critical ("Unable to update Flatpak remotes: %s", e.message);
+            return;
+        }
 
         GLib.GenericArray<weak Flatpak.Remote> remotes;
-        remotes = installation.list_remotes ();
+        try {
+            remotes = installation.list_remotes ();
+        } catch (Error e) {
+            critical ("Unable to get a list of Flatpak remotes: %s", e.message);
+            return;
+        }
 
         GLib.GenericArray<weak Flatpak.InstalledRef> installed_refs;
-        installed_refs = installation.list_installed_refs ();
+        try {
+            installed_refs = installation.list_installed_refs ();
+        } catch (Error e) {
+            critical ("Unable to get a list of installed Flatpak refs: %s", e.message);
+            return;
+        }
 
         var remote_ref_strings = new GLib.GenericArray<string> ();
         foreach (var remote in remotes) {
@@ -125,12 +152,9 @@ public class Application : GLib.Application {
                                         continue;
                                     }
 
-                                    var bundle_id = remote_ref;
-                                    //  print ("Installing %s %s\n", origin, bundle_id);
-                                    //  install (installation, origin, bundle_id);
                                     to_be_installed_list.add (FlatpakInstall () {
                                         origin = origin,
-                                        bundle_id = bundle_id,
+                                        bundle_id = remote_ref,
                                     });
                                 }
                             }
@@ -171,7 +195,7 @@ public class Application : GLib.Application {
         }
     }
 
-    private string? is_installed (Flatpak.Installation installation, string origin, string bundle_id) {
+    private string? is_installed (Flatpak.Installation installation, string origin, string bundle_id) throws Error {
         GLib.GenericArray<weak Flatpak.InstalledRef> installed_refs;
         installed_refs = installation.list_installed_refs ();
 
@@ -184,7 +208,7 @@ public class Application : GLib.Application {
         return null;
     }
 
-    private bool update_remotes (Flatpak.Installation installation) {
+    private bool update_remotes (Flatpak.Installation installation) throws Error {
         GLib.GenericArray<weak Flatpak.Remote> remotes = null;
 
         installation.drop_caches ();
