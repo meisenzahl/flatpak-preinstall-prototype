@@ -1,0 +1,8 @@
+[Unit]
+Description=Check for flatpak user configurations to preinstall
+ConditionACPower=true
+After=network.target network-online.target systemd-networkd.service NetworkManager.service connman.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/flatpak-preinstall-prototype --user --assumeyes
