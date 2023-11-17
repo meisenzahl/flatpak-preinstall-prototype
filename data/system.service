@@ -6,3 +6,6 @@ After=network.target network-online.target systemd-networkd.service NetworkManag
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/flatpak-preinstall-prototype --system --assumeyes
+
+[Install]
+WantedBy=multi-user.target
