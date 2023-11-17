@@ -115,32 +115,33 @@ public class Application : GLib.Application {
                         continue;
                     }
 
-                    var key_file = new KeyFile ();
                     try {
+                        var key_file = new KeyFile ();
                         key_file.load_from_file (path, KeyFileFlags.NONE);
 
                         foreach (var group in key_file.get_groups ()) {
-                            var id = group;
-                            var collection_id = key_file.get_string (group, "CollectionID");
+                            var application_id = group;
+                            var branch = key_file.get_string (group, "Branch");
+                            var origin = key_file.get_string (group, "Origin");
                             var preinstall = key_file.get_boolean (group, "Preinstall");
 
                             if (preinstall) {
-                                var installed = is_installed (installation, collection_id, id);
+                                var installed = is_installed (installation, origin, application_id, branch);
                                 if (installed != null) {
                                     print ("Skipping: %s is already installed\n", installed);
                                     continue;
                                 }
 
-                                string? origin = null;
+                                string? remote_origin = null;
                                 foreach (var remote in remotes) {
-                                    if (remote.get_name () == collection_id) {
-                                        origin = remote.get_name ();
+                                    if (remote.get_name () == origin) {
+                                        remote_origin = remote.get_name ();
                                         break;
                                     }
                                 }
 
-                                if (origin == null) {
-                                    print ("Could not find remote for %s\n", id);
+                                if (remote_origin == null) {
+                                    print ("Could not find remote for %s\n", application_id);
                                     continue;
                                 }
 
@@ -151,9 +152,14 @@ public class Application : GLib.Application {
                                         continue;
                                     }
 
-                                    string application_id = keys[1];
+                                    string remote_application_id = keys[1];
+                                    string remote_application_branch = keys[3];
 
-                                    if (id != application_id) {
+                                    if (application_id != remote_application_id) {
+                                        continue;
+                                    }
+
+                                    if (branch != remote_application_branch) {
                                         continue;
                                     }
 
@@ -165,7 +171,7 @@ public class Application : GLib.Application {
                             }
                         }
                     } catch (Error e) {
-                        critical ("Unable to read Flatpak configuration %s", e.message);
+                        critical ("Unable to process Flatpak configuration %s: %s", path, e.message);
                     }
                 }
 
@@ -202,12 +208,19 @@ public class Application : GLib.Application {
         }
     }
 
-    private string? is_installed (Flatpak.Installation installation, string origin, string bundle_id) throws Error {
+    private string? is_installed (Flatpak.Installation installation, string origin, string application_id, string branch) throws Error {
         GLib.GenericArray<weak Flatpak.InstalledRef> installed_refs;
         installed_refs = installation.list_installed_refs ();
 
         foreach (var installed_ref in installed_refs) {
-            if (installed_ref.origin == origin && installed_ref.format_ref ().contains (bundle_id)) {
+            if (installed_ref.origin != origin) {
+                continue;
+            }
+
+            var keys = installed_ref.format_ref ().split ("/");
+            string remote_application_id = keys[1];
+            string remote_application_branch = keys[3];
+            if (remote_application_id == application_id && remote_application_branch == branch) {
                 return installed_ref.format_ref ();
             }
         }
